@@ -1,0 +1,98 @@
+---
+title: "Code"
+author: "Agastya Deshraju, Nick Ferrante, Jasdeep Singh Jhajj"
+date: "2024-12-09"
+output: html_document
+---
+
+
+```{r}
+if (!require("pacman")) 
+  install.packages("pacman")
+
+pacman::p_load(tidyverse,
+               dplyr,
+               scales,
+               arules,
+               arulesViz,
+               viridis,
+               reshape2) 
+
+```
+
+```{r}
+data <- read.csv('train.csv')
+
+data
+```
+
+```{r}
+colSums(is.na(data))
+```
+
+
+```{r}
+data |> head()
+```
+
+
+```{r}
+data[is.na(data)] <- 0
+
+colSums(is.na(data))
+```
+
+```{r}
+data$satisfaction <- ifelse(data$satisfaction == "satisfied", "satisfied", "unsatisfied")
+```
+
+```{r}
+data
+```
+
+
+```{r}
+data$satisfaction_numerical <- ifelse(data$satisfaction == "satisfied", 1, 0)
+```
+
+```{r}
+data
+```
+
+
+```{r}
+str(data)
+```
+
+
+```{r}
+numeric_data <- data[, -c(1,2,3,4,6,7,25)]
+
+numeric_data
+```
+
+
+
+```{r}
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+cor_melted <- melt(cor_matrix)
+```
+
+
+
+```{r}
+ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "#ffebeb", high = "#ff0000") +
+  labs(
+    title = "Correlation Matrix Heatmap",
+    x = "Features",
+    y = "Features",
+    fill = "Correlation"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+
