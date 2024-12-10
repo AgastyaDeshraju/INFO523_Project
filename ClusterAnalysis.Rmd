@@ -1,26 +1,13 @@
 ---
 title: "Cluster Analysis"
-output: pdf_document
-date: "2024-12-07"
-editor_options: 
-  chunk_output_type: inline
+author: "Agastya Deshraju, Jasdeep Singh Jhajj, Nick Ferrante"
+output: html_document
+date: "2024-12-09"
 ---
 
 ```{r setup, message = TRUE}
 if (!require("pacman")) 
   install.packages("pacman")
-
-# Install packages
-# pacman::p_load(tidyverse,
-#                dplyr,
-#                cluster,
-#                scatterplot3d,
-#                e1071,
-#                Rtsne,
-#                ggplot2,
-#                plotly,
-#                factoextra,
-#                clustertend)
 
 pacman::p_load(tidyverse,
                dplyr,
@@ -32,11 +19,8 @@ pacman::p_load(tidyverse,
                factoextra,
                clustertend)
 
-
-
 # Read the data in
-airlineDf <- read.csv("/Users/nickferrante/Documents/Info523DataMining/Info523FinalProject/data/airlineTrain.csv")
-#airlineDf <- read.csv('train.csv')
+airlineDf <- read.csv('train.csv')
 
 # Remove 'X' column (index) and passenger id
 airlineDf <- airlineDf[-c(1,2)]
