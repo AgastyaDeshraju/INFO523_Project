@@ -1,0 +1,200 @@
+---
+title: "Cluster Analysis"
+output: pdf_document
+date: "2024-12-07"
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, message = TRUE}
+if (!require("pacman")) 
+  install.packages("pacman")
+
+# Install packages
+# pacman::p_load(tidyverse,
+#                dplyr,
+#                cluster,
+#                scatterplot3d,
+#                e1071,
+#                Rtsne,
+#                ggplot2,
+#                plotly,
+#                factoextra,
+#                clustertend)
+
+pacman::p_load(tidyverse,
+               dplyr,
+               cluster,
+               dbscan,
+               e1071,
+               Rtsne,
+               ggplot2,
+               factoextra,
+               clustertend)
+
+
+
+# Read the data in
+airlineDf <- read.csv("/Users/nickferrante/Documents/Info523DataMining/Info523FinalProject/data/airlineTrain.csv")
+#airlineDf <- read.csv('train.csv')
+
+# Remove 'X' column (index) and passenger id
+airlineDf <- airlineDf[-c(1,2)]
+
+# Replace null values with 0 in Arrival.Delay.in.Minutes column
+airlineDf$Arrival.Delay.in.Minutes[is.na(airlineDf$Arrival.Delay.in.Minutes)] <- 0
+
+
+# Examine the schema of the dataset
+glimpse(airlineDf)
+```
+
+
+```{r feature-selection}
+features <- c("Age",
+              "Class",
+              "Flight.Distance",
+              "satisfaction")
+
+# Select the desired features from the original dataframe
+set.seed(123)
+featuresDf <- airlineDf[sample(1:nrow(airlineDf), 2000), features]
+
+# Convert character variables to Factors
+featuresDf <- featuresDf |>
+  mutate(Class = factor(Class),
+         satisfaction = factor(satisfaction))
+
+# Check the skewness of the numeric variables
+numericCols <- sapply(featuresDf[], is.numeric)
+histogramList <- lapply(featuresDf[, numericCols], 
+                        hist, 
+                        main = "Histogram",
+                        xlab = "Values")
+
+```
+
+
+```{r skewness-check}
+# Calculate the skewness of numeric variables
+flightDistSkew <- skewness(featuresDf$Flight.Distance)
+ageSkew <- skewness(featuresDf$Age)
+
+cat("Skewness in Age:", ageSkew)
+cat("\nSkewness in Flight.Distance:", flightDistSkew)
+```
+
+?Log Transformation on Flight.Distance?
+
+```{r distance-matrix}
+# Compute the distance matrix
+gower_dist <- daisy(featuresDf,
+                    metric = "gower")
+gower_mat <- as.matrix(gower_dist)
+summary(gower_dist)
+```
+
+```{r number-clusters, fig.show = 'hold'}
+# Calculate Silhouette width for 2 to 10 clusters with PAM
+sil <- c(NA)
+for(i in 2:10){
+  pam_fit <- pam(gower_mat, diss = TRUE, k = i)
+  sil[i] <- pam_fit$silinfo$avg.width
+}
+
+# Plot Silhouette width
+plot(1:10, sil,
+     xlab = "Number of clusters",
+     ylab = "Silhouette Width")
+lines(1:10, sil)
+```
+
+```{r pam-clustering}
+# Perform clustering using PAM with 5 clusters
+pam_fit <- pam(gower_dist, diss = TRUE, k = 5)
+featuresDf$pam_cluster <- pam_fit$cluster
+
+# Group results by cluster and compute summary data
+pam_results <- featuresDf |>
+  mutate(cluster = pam_fit$clustering) |>
+  group_by(cluster) |>
+  do(the_summary = summary(.))
+
+pam_results$the_summary
+```
+
+```{r pam-mediods}
+# Print the mediods of each cluster
+featuresDf[pam_fit$medoids,]
+```
+
+```{r t-SNE-plot}
+# Create t-SNE object with distance matrix
+tsne_obj <- Rtsne(gower_dist, is_distance = TRUE)
+tsne_data <- tsne_obj$Y |>
+  data.frame() |>
+  setNames(c("X", "Y")) |>
+  mutate(cluster = factor(pam_fit$clustering))
+
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
+
+```
+
+```{r knee-plot, fig.show = 'hold'}
+# Determine epsilon by plotting the points' kNN distances
+kNNdistplot(gower_dist, k = 5)
+abline(h = 0.03)
+```
+```{r optics-clustering}
+# Plot the reachability of the OPTICS clustering
+(res_op <- optics(gower_dist, eps = 10, minPts = 20))
+plot(res_op)
+```
+
+```{r dbscan-clustering}
+# Plot the reachability of the DBSCAN clustering
+(res_op_d <- extractDBSCAN(res_op, eps_cl = 0.05))
+plot(res_op_d)
+```
+
+```{r optics-cluster-Eval, message=FALSE}
+# Examine the average value for each variable from the OPTICS clustering
+
+featuresDf$optics_cluster <- res_op_d$cluster
+
+# Find the average value for each numeric variable based on cluster
+clusterAvg <- featuresDf |>
+  group_by(optics_cluster) |>
+  summarize(across(where(is.numeric), mean, na.rm = TRUE), .groups = 'drop')
+
+# Create a tibble containing the Class value for each cluster
+# Each cluster except for the noisy points (cluster 0) only
+# has one value for the class variable so the slice_max()
+# function is used to select the most represented Class
+# for the noisy points since we are not analyzing the Class 
+# of the noise anyways
+classVal <- featuresDf |>
+  group_by(optics_cluster, Class) |>
+  summarise(count = n()) |>
+  slice_max(order_by = count, n = 1, with_ties = FALSE)
+
+# Create a tibble containing the satisfaction value for each cluster
+satisVal <- featuresDf |>
+  group_by(optics_cluster, satisfaction) |>
+  summarise(count = n()) |>
+  slice_max(order_by = count, n = 1, with_ties = FALSE)
+
+# Join the Class values and satisfaction values with the rest of the average points for each cluster
+clusterAvg <- clusterAvg |>
+  left_join(classVal |> select(optics_cluster, Class = Class), by = "optics_cluster") |>
+  left_join(satisVal |> select(optics_cluster, satisfaction = satisfaction), by = "optics_cluster") |>
+  select(optics_cluster, 
+         Age, 
+         Class, 
+         Flight.Distance, 
+         satisfaction, 
+         pam_cluster)
+
+clusterAvg
+```
