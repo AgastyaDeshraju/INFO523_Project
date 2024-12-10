@@ -3,9 +3,11 @@ title: "Cluster Analysis"
 author: "Agastya Deshraju, Jasdeep Singh Jhajj, Nick Ferrante"
 output: html_document
 date: "2024-12-09"
+editor_options: 
+  chunk_output_type: console
 ---
 
-```{r setup, message = TRUE}
+```{r setup, message = FALSE}
 if (!require("pacman")) 
   install.packages("pacman")
 
@@ -65,7 +67,7 @@ flightDistSkew <- skewness(featuresDf$Flight.Distance)
 ageSkew <- skewness(featuresDf$Age)
 
 cat("Skewness in Age:", ageSkew)
-cat("\nSkewness in Flight.Distance:", flightDistSkew)
+cat("Skewness in Flight.Distance:", flightDistSkew)
 ```
 
 ?Log Transformation on Flight.Distance?
@@ -142,7 +144,7 @@ plot(res_op)
 plot(res_op_d)
 ```
 
-```{r optics-cluster-Eval, message=FALSE}
+```{r optics-cluster-Eval, warning = FALSE, message = FALSE}
 # Examine the average value for each variable from the OPTICS clustering
 
 featuresDf$optics_cluster <- res_op_d$cluster
@@ -180,5 +182,5 @@ clusterAvg <- clusterAvg |>
          satisfaction, 
          pam_cluster)
 
-clusterAvg
+clusterAvg[-1,]
 ```
