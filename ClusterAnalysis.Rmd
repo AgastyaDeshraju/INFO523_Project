@@ -4,7 +4,7 @@ author: "Agastya Deshraju, Jasdeep Singh Jhajj, Nick Ferrante"
 output: html_document
 date: "2024-12-09"
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r setup, message = FALSE}
@@ -17,12 +17,10 @@ pacman::p_load(tidyverse,
                dbscan,
                e1071,
                Rtsne,
-               ggplot2,
-               factoextra,
-               clustertend)
+               ggplot2)
 
 # Read the data in
-airlineDf <- read.csv('train.csv')
+airlineDf <- read.csv("train.csv")
 
 # Remove 'X' column (index) and passenger id
 airlineDf <- airlineDf[-c(1,2)]
@@ -35,6 +33,7 @@ airlineDf$Arrival.Delay.in.Minutes[is.na(airlineDf$Arrival.Delay.in.Minutes)] <-
 glimpse(airlineDf)
 ```
 
+### Feature Selection
 
 ```{r feature-selection}
 features <- c("Age",
@@ -60,7 +59,6 @@ histogramList <- lapply(featuresDf[, numericCols],
 
 ```
 
-
 ```{r skewness-check}
 # Calculate the skewness of numeric variables
 flightDistSkew <- skewness(featuresDf$Flight.Distance)
@@ -70,12 +68,30 @@ cat("Skewness in Age:", ageSkew)
 cat("Skewness in Flight.Distance:", flightDistSkew)
 ```
 
-?Log Transformation on Flight.Distance?
+We can see a positive skew in the Flight.Distance variable so we will perform a log transformation and re-evaluate.  
+<br>
+
+#### Log transformation on the Flight.Distance variable to eliminate skewness
+
+```{r log-transformation}
+hist(log(featuresDf$Flight.Distance), main = "Flight Distance Histogram", xlab = "Distance")
+```
+
+```{r flight-distance-skew}
+flightDistSkew <- skewness(log(featuresDf$Flight.Distance))
+cat("Skewness in Flight.Distance:", flightDistSkew)
+```
+
+We can see the skew has been eliminated
+<br>
+
+### PAM Clustering
 
 ```{r distance-matrix}
 # Compute the distance matrix
 gower_dist <- daisy(featuresDf,
-                    metric = "gower")
+                    metric = "gower",
+                    type = list(logratio = 3))
 gower_mat <- as.matrix(gower_dist)
 summary(gower_dist)
 ```
@@ -95,6 +111,10 @@ plot(1:10, sil,
 lines(1:10, sil)
 ```
 
+We can see that PAM with 5 clusters produces the best Silhouette width.
+<br>
+<br>
+
 ```{r pam-clustering}
 # Perform clustering using PAM with 5 clusters
 pam_fit <- pam(gower_dist, diss = TRUE, k = 5)
@@ -108,6 +128,19 @@ pam_results <- featuresDf |>
 
 pam_results$the_summary
 ```
+
+Cluster 1: Contains the oldest passengers who mainly flew Business class and had the longest flight distances. All passengers in this cluster were satisfied.
+
+Cluster 2: Contains passengers in the middle age group who all flew Business class with medium flight distances. All passengers in this cluster were dissatisfied.
+
+Cluster 3: Contains the youngest passengers who all flew Eco Plus class with the shortest flight distances. The large majority of these passengers were dissatisfied.
+
+Cluster 4: Contains younger passengers who all flew Eco class with shorter flight distances. All passengers in this cluster were dissatisfied.
+
+Cluster 5: Contains older passengers who mainly flew Eco class with shorter distance flights. All passengers in this cluster were satisfied.
+<br>
+<br>
+
 
 ```{r pam-mediods}
 # Print the mediods of each cluster
@@ -127,14 +160,17 @@ ggplot(aes(x = X, y = Y), data = tsne_data) +
 
 ```
 
+### OPTICS
+
 ```{r knee-plot, fig.show = 'hold'}
 # Determine epsilon by plotting the points' kNN distances
 kNNdistplot(gower_dist, k = 5)
 abline(h = 0.03)
 ```
+
 ```{r optics-clustering}
 # Plot the reachability of the OPTICS clustering
-(res_op <- optics(gower_dist, eps = 10, minPts = 20))
+(res_op <- optics(gower_dist, eps = 10, minPts = 15))
 plot(res_op)
 ```
 
@@ -181,6 +217,19 @@ clusterAvg <- clusterAvg |>
          Flight.Distance, 
          satisfaction, 
          pam_cluster)
-
+airlineDf <- read.csv("/Users/nickferrante/Documents/Info523DataMining/Info523FinalProject/data/airlineTrain.csv")
 clusterAvg[-1,]
 ```
+
+```{r}
+#clustCompare <- featuresDf[featuresDf$optics_cluster != 0, c("pam_cluster", "optics_cluster")]
+clustCompare <- featuresDf
+clustCompare$optics_cluster[clustCompare$optics_cluster == 3] <- 7
+clustCompare$optics_cluster[clustCompare$optics_cluster == 4] <- 3
+clustCompare$optics_cluster[clustCompare$optics_cluster == 7] <- 4
+
+table(clustCompare$pam_cluster, clustCompare$optics_cluster)
+
+```
+
+We are able to see a significant amount of overlap in the clusters created by the PAM and OPTICS methods increasing our confidence in the quality of the clustering. 
