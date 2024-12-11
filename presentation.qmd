@@ -326,10 +326,6 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
 
 ```
 
-## Heatmap interpretation
-
--   There's a strong correlation between *Seat Comfort, Inflight Entertainment, Online Boarding* with *Satisfaction*
--   While operating metrics like *Delays* negatively affect customer satisfaction, their impact is relatively weaker compared to customer-facing metrics
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prepare the dataset
@@ -368,7 +364,7 @@ transactions <- as(data_subset, "transactions")
 
 
 
-## Apriori
+## Apriori Algorithm
 
 * Uses a generate-and-test approach.
 * Follows the apriori property
@@ -387,7 +383,7 @@ top_rules_lift <- sort(satisfied_rules, by = "lift")[1:10]
 
 
 
-## Scatter plot of Supportt vs Confidence for Satisfaction
+## Scatter plot of Support vs Confidence for Satisfaction
 ```{r  warning=FALSE}
 plot(
   satisfied_rules,
@@ -399,9 +395,7 @@ plot(
   )
 )
 ```
-## Interpretation of Support Vs Confidence for Satisfaction
-* The graph shows a concentration of the higher lift points around the high confidence - low support region
-* When selecting the rules, efforts should be made to balance high support rules, with high confidence and high lift rules
+
 
 
 ## Satisfaction based Rule Network Graph
@@ -422,14 +416,10 @@ plot(
 # )
 
 ```
-## Interpretation of the network graph
-
--   Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
--   Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before.
 
 
 
-## FP Growth
+## FP Growth Algorithm
 
 * Uses a divide-and-conquer approach
 * Constructs a compact data structure to represent the data
@@ -459,9 +449,7 @@ plot(
   )
 )
 ```
-## Interpretation of Support Vs Confidence for Unsatisfaction
-* Similar to the satisfaction plot, there is a high concentration of low support and high confidence points.
-* Focus should therefore be drawn to rules with moderate lift and higher support .
+
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -473,23 +461,6 @@ top_unsatisfaction_rules <- sort(unsatisfaction_rules, by = "lift")[1:10]
 <iframe src="network_plot_unsatisfied_fp.html" width="100%" height="550-0px" frameborder="0"></iframe>
 
 
-```{r}
-# plot(
-#   top_unsatisfaction_rules, 
-#   method = "graph", 
-#   engine = "htmlwidget",
-#   control = list(
-#     nodeCol = "#4ebded",  # Node color (blue-green)
-#     edgeCol = "#4f86c1",  # Edge color (light blue)
-#     alpha = 0.8           # Transparency for edges
-#   )
-# )
-```
-
-## Interpretation of the Network Graph
-
-* Features such as Poor Leg Service and Poor Wi-Fi Service contribute to unsatisfaction
-* Thicker and darker edges represent stronger rules
 
 
 ## Classification Introduction
