@@ -1,12 +1,45 @@
 ---
-title: "Code"
-author: "Agastya Deshraju, Nick Ferrante, Jasdeep Singh Jhajj"
-date: "2024-12-09"
-output: html_document
+title: "Meteoric Fall: a comet-ment to data"
+subtitle: "INFO 523 - Fall 2024 - Project Final"
+author: "Nick Ferrante, Jasdeep Singh Jhajj, Agastya Deshraju"
+title-slide-attributes:
+  data-background-image: images/airplane.png
+  data-background-size: stretch
+  data-background-opacity: "0.7"
+  data-slide-number: none
+
+theme:  [beige,data/customtheming.scss]
+    transition: concave
+    background-transition: fade
+
+editor: visual
+execute:
+  echo: false
 ---
 
+```{r setup, echo=FALSE}
+#| label: setup
+#| include: false
 
-```{r}
+# Plot theme
+ggplot2::theme_set(ggplot2::theme_minimal(base_size = 11))
+
+# For better figure resolution
+knitr::opts_chunk$set(
+  fig.retina = 3,
+  dpi = 300,
+  #fig.width = 6, 
+  fig.asp = 0.618 
+  )
+```
+
+
+```{r load_pkgs, echo=FALSE}
+#| label: load_pkgs
+#| message: false
+#| warning: false
+#| code-summary: "Load Packages"
+
 if (!require("pacman")) 
   install.packages("pacman")
 
@@ -16,75 +49,30 @@ pacman::p_load(tidyverse,
                arules,
                arulesViz,
                viridis,
-               reshape2) 
-
+               reshape2,
+               cluster,
+               dbscan,
+               e1071,
+               Rtsne) 
 ```
+
 
 ```{r}
 data <- read.csv('train.csv')
-
-data
-```
-
-```{r}
-colSums(is.na(data))
-```
-
-
-```{r}
-data |> head()
-```
-
-
-```{r}
 data[is.na(data)] <- 0
-
-colSums(is.na(data))
-```
-
-```{r}
 data$satisfaction <- ifelse(data$satisfaction == "satisfied", "satisfied", "unsatisfied")
-```
-
-```{r}
-data
-```
-
-
-```{r}
 data$satisfaction_numerical <- ifelse(data$satisfaction == "satisfied", 1, 0)
-```
-
-```{r}
-data
-```
-
-
-```{r}
-str(data)
-```
-
-
-```{r}
 numeric_data <- data[, -c(1,2,3,4,6,7,25)]
 
-numeric_data
 ```
 
 
-
+### Heatmap Correlation
 ```{r}
 cor_matrix <- cor(numeric_data, use = "complete.obs")
 
 cor_melted <- melt(cor_matrix)
-```
 
-
-```{r}
-cor_matrix
-```
-
-```{r}
 ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   geom_tile(color = "white") +
   scale_fill_gradient(low = "#d6eaf8", high = "#4f86c1") + # Blue-to-Green gradient
@@ -96,7 +84,15 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
 ```
+### Heatmap interpretation
+
+* There's a strong correlation between *Seat Comfort, Inflight Entertainment, Online Boarding* with *Satisfaction*
+* While operating metrics like *Delays* negatively affect customer satisfaction, their impact is relatively weaker compared to customer-facing metrics
+
+
+
 ```{r}
 # Prepare the dataset
 data_temp <- data
@@ -121,30 +117,15 @@ for(col in columnsSQE){
 data_temp$satisfaction <- factor(ifelse(data_temp$satisfaction_numerical == 1, 
                                         "Satisfied", "Unsatisfied"),
                                   levels = c("Unsatisfied", "Satisfied"))
-```
 
-
-```{r}
-# Verify the new satisfaction column
-table(data_temp$satisfaction)
-```
-
-
-```{r}
 # Include the satisfaction column in the subset for transactions
 columnsSQE <- c(columnsSQE, "satisfaction")
 
 # Subset only the selected columns for association rule mining
 data_subset <- data_temp[, columnsSQE]
-```
 
-
-```{r}
 # Convert to transactions format
 transactions <- as(data_subset, "transactions")
-
-# Summarize transactions
-summary(transactions)
 ```
 
 
@@ -153,31 +134,19 @@ summary(transactions)
 itemFrequencyPlot(transactions, support = 0.3, cex.names = 0.8, col = "#4f86c1")
 ```
 
-
+### Apriori
 ```{r}
 # Run the Apriori algorithm
 ars_adjusted <- apriori(transactions, parameter = list(support = 0.02, confidence = 0.6))
 
-# Inspect the top rules sorted by lift
-inspect(sort(ars_adjusted, by = "lift")[1:10])
-```
-
-
-```{r}
-# Display item labels
-itemLabels(ars_adjusted)
-```
-
-### Apriori Satisfied Rules
-```{r}
 # Subset rules where satisfaction = Satisfied is in the rhs
 satisfied_rules <- subset(ars_adjusted, rhs %in% "satisfaction=Satisfied")
 
 # Extract top 10 rules by Lift
 top_rules_lift <- sort(satisfied_rules, by = "lift")[1:10]
-inspect(top_rules_lift)
-
 ```
+
+
 ```{r}
 plot(
   top_rules_lift,
@@ -190,13 +159,10 @@ plot(
   )
 )
 
-# # Optionally save the plot as an HTML file (interactive)
-# htmlwidgets::saveWidget(
-#   plot(top_rules_lift, method = "graph", engine = "htmlwidget"),
-#   "network_plot_satisfied.html"
-# )
 ```
 
+* Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
+* Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before. 
 ```{r}
 plot(
   satisfied_rules,
@@ -207,15 +173,12 @@ plot(
     col = colorRampPalette(c( "#4f86c1", "#d6eaf8"))(1.8)
   )
 )
-
-# Sort the rules by lift
-top_rules <- sort(ars_adjusted, by = "lift")
 ```
 
 
 
+### FP Growth
 
-## FP Growth Unsatisfied
 
 ```{r}
 fp_itemsets <- apriori(transactions, parameter = list(support = 0.02, target = "frequent itemsets"))
@@ -226,9 +189,9 @@ fp_rules <- apriori(transactions, parameter = list(support = 0.02, confidence = 
 # Filter rules where satisfaction = Satisfied is in the RHS
 unsatisfaction_rules <- subset(fp_rules, rhs %in% "satisfaction=Unsatisfied")
 
-# Inspect top 10 rules for satisfaction
-inspect(sort(unsatisfaction_rules, by = "lift")[1:10])
 ```
+
+
 
 ```{r}
 # Scatterplot for satisfaction rules
@@ -243,19 +206,6 @@ plot(
 )
 ```
 
-```{r}
-high_lift_unsatisfaction_rules <- subset(unsatisfaction_rules, lift > 1.5)
-plot(
-  high_lift_unsatisfaction_rules, 
-  method = "scatterplot", 
-  measure = c("support", "confidence"), 
-  shading = "lift",
-  control = list(
-    col = colorRampPalette(c( "#4f86c1", "#d6eaf8"))(1.5)
-  )
-)
-
-```
 
 
 ```{r}
@@ -270,12 +220,5 @@ plot(
     alpha = 0.8           # Transparency for edges
   )
 )
-
-```
-
-
-
-```{r}
-str(data)
 ```
 
