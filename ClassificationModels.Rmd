@@ -94,6 +94,39 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
 ```
 
 
+# Bar Plot for Categorical Variables
+Visualize how categorical features like Class relate to Satisfaction
+
+```{r}
+library(ggplot2)
+
+# Example: Bar plot for Class and Satisfaction
+ggplot(data, aes(x = Class, fill = satisfaction)) +
+  geom_bar(position = "fill") +
+  labs(title = "Satisfaction Levels by Class", y = "Proportion") +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Density plot for Flight Distance
+ggplot(data, aes(x = Flight.Distance, fill = satisfaction)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density Plot of Flight Distance by Satisfaction", x = "Flight Distance", y = "Density") +
+  theme_minimal()
+
+```
+
+```{r}
+# Stacked Bar Chart for Customer Type
+ggplot(data, aes(x = Customer.Type, fill = satisfaction)) +
+  geom_bar(position = "fill") +
+  labs(title = "Satisfaction Levels by Customer Type", y = "Proportion", x = "Customer Type") +
+  theme_minimal()
+
+```
+
 # CODE
 
 ```{r}
@@ -179,33 +212,35 @@ svm_predictions <- predict(svm_model, test_dataset_reduced)
 
 # Evaluate model performance
 confusionMatrix(svm_predictions, test_y)
-
 ```
 
 
 
+
 # Decision Tree
+We create a decision tree using the rpart method and evaluates its performance by generating predictions and plotting the decision tree structure.
 
 ```{r}
 
 library(rpart)
 library(rpart.plot)
 
-
 # Fit a decision tree
 tree_model <- rpart(satisfaction ~ ., data = train_dataset, method = "class")
+
 # Predict on test dataset
 tree_predictions <- predict(tree_model, test_x, type = "class")
+
 # Evaluate model
 confusionMatrix(tree_predictions, test_y)
+
 # Plot the tree
 rpart.plot(tree_model, type = 4, extra = 104, main = "Decision Tree for Satisfaction")
-
-
 
 ```
 
 # Random Forest
+A Random Forest model is trained using the training dataset, and its performance is evaluated by comparing the predicted labels to the actual labels using a confusion matrix.
 
 ```{r}
 # Train Random Forest model
@@ -238,7 +273,8 @@ ggplot(conf_matrix_rf_melted, aes(x = Prediction, y = Reference, fill = value)) 
   theme_minimal()
 
 ```
-
+## Feature Importance from Random Forest
+This code visualizes the feature importance from the Random Forest model using a bar plot. It helps to identify which features contribute the most to model prediction.
 
 ```{r}
 # Feature importance from Random Forest
@@ -273,44 +309,7 @@ ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
 
 
 
-# extra
-
-# Bar Plot for Categorical Variables
-Visualize how categorical features like Class or Customer Type relate to Satisfaction
-
-
-```{r}
-library(ggplot2)
-
-# Example: Bar plot for Class and Satisfaction
-ggplot(data, aes(x = Class, fill = satisfaction)) +
-  geom_bar(position = "fill") +
-  labs(title = "Satisfaction Levels by Class", y = "Proportion") +
-  theme_minimal()
-
-```
-
-
-```{r}
-# Density plot for Flight Distance
-ggplot(data, aes(x = Flight.Distance, fill = satisfaction)) +
-  geom_density(alpha = 0.5) +
-  labs(title = "Density Plot of Flight Distance by Satisfaction", x = "Flight Distance", y = "Density") +
-  theme_minimal()
-
-```
-
-
-6. Stacked Bar Chart for Categorical Features
-
-```{r}
-# Example: Customer Type and Satisfaction
-ggplot(data, aes(x = Customer.Type, fill = satisfaction)) +
-  geom_bar(position = "fill") +
-  labs(title = "Satisfaction Levels by Customer Type", y = "Proportion", x = "Customer Type") +
-  theme_minimal()
-
-```
+## Accuracy Comparison
 
 ```{r}
 # Accuracy comparison
@@ -323,12 +322,15 @@ accuracy_df <- data.frame(
   )
 )
 
-# Bar plot of accuracies
+# Bar plot of accuracies, ordered by accuracy
+accuracy_df$Model <- factor(accuracy_df$Model, levels = accuracy_df$Model[order(accuracy_df$Accuracy)])
+
 ggplot(accuracy_df, aes(x = Model, y = Accuracy, fill = Model)) +
   geom_bar(stat = "identity", color = "black") +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(title = "Model Accuracy Comparison", x = "Model", y = "Accuracy") +
   theme_minimal()
+
 
 ```
 
