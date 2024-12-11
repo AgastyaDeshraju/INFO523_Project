@@ -303,8 +303,6 @@ ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
   )
   print(results)
 
-
-
 ```
 
 

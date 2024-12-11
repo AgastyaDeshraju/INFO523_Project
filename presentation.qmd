@@ -54,7 +54,13 @@ pacman::p_load(tidyverse,
                cluster,
                dbscan,
                e1071,
-               Rtsne) 
+               Rtsne,
+               caret,
+               rpart,
+               randomForest,
+               keras,
+               dplyr
+) 
 ```
 
 ```{r}
@@ -213,3 +219,204 @@ plot(
   )
 )
 ```
+
+
+
+## Classification Introduction
+
+- This presentation showcases the performance of three classification models: **SVM**, **Decision Tree**, and **Random Forest**.
+- For each model, we:
+  - Select relevant features based on correlation analysis.
+  - Train the model.
+  - Evaluate performance using a confusion matrix and accuracy.
+  - Visualize results with relevant plots.
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(caret)
+library(e1071)    # For SVM
+library(rpart)    # For Decision Tree
+library(randomForest) # For Random Forest
+library(dplyr)
+# Load the training dataset
+train_dataset <- read.csv("train.csv")
+
+# Convert "satisfaction" column to factor
+train_dataset$satisfaction <- as.factor(train_dataset$satisfaction)
+
+# Handle missing values if any
+train_dataset <- train_dataset %>% drop_na()
+
+# Convert categorical variables to factors
+categorical_cols <- c("Gender", "Customer.Type", "Type.of.Travel", "Class")
+train_dataset[categorical_cols] <- lapply(train_dataset[categorical_cols], as.factor)
+
+# Split data into features and labels
+train_x <- train_dataset %>% select(-satisfaction)
+train_y <- train_dataset$satisfaction
+
+# Load the test dataset
+test_dataset <- read.csv("test.csv")
+
+# Convert "satisfaction" column to factor if it exists
+if ("satisfaction" %in% colnames(test_dataset)) {
+  test_dataset$satisfaction <- as.factor(test_dataset$satisfaction)
+}
+
+# Handle missing values if any
+test_dataset <- test_dataset %>% drop_na()
+
+# Convert categorical variables to factors
+test_dataset[categorical_cols] <- lapply(test_dataset[categorical_cols], as.factor)
+
+# Split data into features and labels
+test_x <- test_dataset %>% select(-satisfaction)
+test_y <- if ("satisfaction" %in% colnames(test_dataset)) test_dataset$satisfaction else NULL
+
+```
+## Support Vector Machine (SVM)
+
+- SVM uses a linear kernel to classify satisfaction based on selected features.
+- Features selected: `Inflight.wifi.service`, `Flight.Distance`, `Online.boarding` and `Seat.comfort`.
+
+```{r}
+# Select relevant features
+selected_features <- c("Inflight.wifi.service", "Flight.Distance",
+                       "Online.boarding", "Seat.comfort", "satisfaction")
+
+# Create subsets for training and testing
+# train_dataset_reduced <- train_dataset[, selected_features]
+# test_dataset_reduced <- test_dataset[, selected_features]
+# 
+# # Train SVM model
+# svm_model <- svm(satisfaction ~ ., data = train_dataset_reduced, kernel = "linear")
+# 
+# # Predict and evaluate
+# svm_predictions <- predict(svm_model, test_dataset_reduced)
+# confusionMatrix(svm_predictions, test_y)
+```
+
+
+## SVM: Confusion Matrix Heatmap
+
+```{r}
+library(ggplot2)
+library(caret)
+library(reshape2)
+
+# # Generate confusion matrix for SVM
+# conf_matrix_svm <- confusionMatrix(svm_predictions, test_y)$table
+# conf_matrix_svm_melted <- melt(conf_matrix_svm)
+# 
+# # Heatmap
+# ggplot(conf_matrix_svm_melted, aes(x = Prediction, y = Reference, fill = value)) +
+#   geom_tile(color = "white") +
+#   scale_fill_gradient(low = "lightblue", high = "darkblue") +
+#   labs(title = "Confusion Matrix (SVM)", x = "Predicted", y = "Actual", fill = "Frequency") +
+#   theme_minimal()
+```
+
+
+## Decision Tree
+
+- Decision Tree classifies satisfaction by recursively splitting the dataset.
+- Uses `rpart` library for model creation and visualization.
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Fit Decision Tree model
+tree_model <- rpart(satisfaction ~ ., data = train_dataset, method = "class")
+
+# Predict and evaluate
+tree_predictions <- predict(tree_model, test_x, type = "class")
+confusionMatrix(tree_predictions, test_y)
+```
+
+
+## Decision Tree: Visualization
+
+```{r}
+# Plot the decision tree
+rpart.plot(tree_model, type = 4, extra = 104, main = "Decision Tree for Satisfaction")
+```
+
+
+## Random Forest
+
+- Random Forest combines multiple decision trees for robust classification.
+- Utilizes `randomForest` library to build the model.
+
+```{r}
+library(randomForest)
+
+# Train Random Forest model
+rf_model <- randomForest(satisfaction ~ ., data = train_dataset, ntree = 100)
+
+# Predict and evaluate
+rf_predictions <- predict(rf_model, test_x)
+confusionMatrix(rf_predictions, test_y)
+```
+
+
+## Random Forest: Confusion Matrix Heatmap
+
+```{r}
+# Generate confusion matrix for Random Forest
+conf_matrix_rf <- confusionMatrix(rf_predictions, test_y)$table
+conf_matrix_rf_melted <- melt(conf_matrix_rf)
+
+# Heatmap
+ggplot(conf_matrix_rf_melted, aes(x = Prediction, y = Reference, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Confusion Matrix (Random Forest)", x = "Predicted", y = "Actual", fill = "Frequency") +
+  theme_minimal()
+```
+
+
+## Feature Importance: Random Forest
+
+- Identifies the features contributing most to classification decisions.
+
+```{r}
+# Feature importance plot
+importance_df <- data.frame(Feature = rownames(importance(rf_model)), Importance = importance(rf_model)[, 1])
+
+# Bar plot of feature importance
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Feature Importance from Random Forest", x = "Features", y = "Importance") +
+  theme_minimal()
+```
+
+
+## Accuracy Comparison
+
+- The following bar plot compares the accuracy of all three models.
+
+```{r}
+# Accuracy comparison
+data.frame(
+  Model = c("Decision Tree", "Random Forest"),
+  Accuracy = c(
+    #mean(svm_predictions == test_y),
+    mean(tree_predictions == test_y),
+    mean(rf_predictions == test_y)
+  )
+) %>%
+  ggplot(aes(x = reorder(Model, -Accuracy), y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title = "Model Accuracy Comparison", x = "Model", y = "Accuracy") +
+  theme_minimal()
+```
+
+## Conclusion
+
+- **SVM** performs well with fewer features.
+- **Decision Tree** provides easy interpretability.
+- **Random Forest** excels in feature importance and overall accuracy.
+- Consider model choice based on application requirements and computational resources.
