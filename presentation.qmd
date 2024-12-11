@@ -1,5 +1,5 @@
 ---
-title: "Meteoric Fall: a comet-ment to data"
+title: "Airline Satisfaction Analysis"
 subtitle: "INFO 523 - Fall 2024 - Project Final"
 author: "Nick Ferrante, Jasdeep Singh Jhajj, Agastya Deshraju"
 title-slide-attributes:
@@ -7,10 +7,12 @@ title-slide-attributes:
   data-background-size: stretch
   data-background-opacity: "0.7"
   data-slide-number: none
-
-theme:  [beige,data/customtheming.scss]
+format:
+  revealjs: 
+    theme:  [beige,data/customtheming.scss]
     transition: concave
     background-transition: fade
+
 
 editor: visual
 execute:
@@ -32,7 +34,6 @@ knitr::opts_chunk$set(
   fig.asp = 0.618 
   )
 ```
-
 
 ```{r load_pkgs, echo=FALSE}
 #| label: load_pkgs
@@ -56,7 +57,6 @@ pacman::p_load(tidyverse,
                Rtsne) 
 ```
 
-
 ```{r}
 data <- read.csv('train.csv')
 data[is.na(data)] <- 0
@@ -66,8 +66,8 @@ numeric_data <- data[, -c(1,2,3,4,6,7,25)]
 
 ```
 
+## Heatmap Correlation
 
-### Heatmap Correlation
 ```{r}
 cor_matrix <- cor(numeric_data, use = "complete.obs")
 
@@ -86,12 +86,11 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
 ```
-### Heatmap interpretation
 
-* There's a strong correlation between *Seat Comfort, Inflight Entertainment, Online Boarding* with *Satisfaction*
-* While operating metrics like *Delays* negatively affect customer satisfaction, their impact is relatively weaker compared to customer-facing metrics
+## Heatmap interpretation
 
-
+-   There's a strong correlation between *Seat Comfort, Inflight Entertainment, Online Boarding* with *Satisfaction*
+-   While operating metrics like *Delays* negatively affect customer satisfaction, their impact is relatively weaker compared to customer-facing metrics
 
 ```{r}
 # Prepare the dataset
@@ -128,13 +127,13 @@ data_subset <- data_temp[, columnsSQE]
 transactions <- as(data_subset, "transactions")
 ```
 
-
 ```{r}
 # Plot item frequencies
 itemFrequencyPlot(transactions, support = 0.3, cex.names = 0.8, col = "#4f86c1")
 ```
 
-### Apriori
+## Apriori
+
 ```{r}
 # Run the Apriori algorithm
 ars_adjusted <- apriori(transactions, parameter = list(support = 0.02, confidence = 0.6))
@@ -145,7 +144,6 @@ satisfied_rules <- subset(ars_adjusted, rhs %in% "satisfaction=Satisfied")
 # Extract top 10 rules by Lift
 top_rules_lift <- sort(satisfied_rules, by = "lift")[1:10]
 ```
-
 
 ```{r}
 plot(
@@ -161,8 +159,9 @@ plot(
 
 ```
 
-* Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
-* Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before. 
+-   Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
+-   Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before.
+
 ```{r}
 plot(
   satisfied_rules,
@@ -175,10 +174,7 @@ plot(
 )
 ```
 
-
-
-### FP Growth
-
+## FP Growth
 
 ```{r}
 fp_itemsets <- apriori(transactions, parameter = list(support = 0.02, target = "frequent itemsets"))
@@ -190,8 +186,6 @@ fp_rules <- apriori(transactions, parameter = list(support = 0.02, confidence = 
 unsatisfaction_rules <- subset(fp_rules, rhs %in% "satisfaction=Unsatisfied")
 
 ```
-
-
 
 ```{r}
 # Scatterplot for satisfaction rules
@@ -206,8 +200,6 @@ plot(
 )
 ```
 
-
-
 ```{r}
 top_unsatisfaction_rules <- sort(unsatisfaction_rules, by = "lift")[1:10]
 plot(
@@ -221,4 +213,3 @@ plot(
   )
 )
 ```
-
