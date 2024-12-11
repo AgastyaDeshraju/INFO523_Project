@@ -75,6 +75,11 @@ numeric_data <- data[, -c(1,2,3,4,6,7,25)]
 
 ```
 
+## About the Dataset
+
+-   Contains information about a variety of airlines regarding the satisfaction of their customers
+-   23 variables including gender, age, class, flight distance, along with a variety of service satisfaction variables and an overall satisfaction level
+
 ## Clustering Analysis
 
 ```{r load_clustering_data}
