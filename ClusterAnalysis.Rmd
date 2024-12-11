@@ -222,7 +222,6 @@ clusterAvg[-1,]
 ```
 
 ```{r}
-#clustCompare <- featuresDf[featuresDf$optics_cluster != 0, c("pam_cluster", "optics_cluster")]
 clustCompare <- featuresDf
 clustCompare$optics_cluster[clustCompare$optics_cluster == 3] <- 7
 clustCompare$optics_cluster[clustCompare$optics_cluster == 4] <- 3
