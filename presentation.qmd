@@ -564,7 +564,7 @@ ggplot(aes(x = X, y = Y), data = tsne_data) +
   geom_point(aes(color = cluster)) +
   labs(x = "X",
        y = "Y",
-       title = "t-SNE Plot of OPTICS Custering",
+       title = "t-SNE Plot of PAM Custering",
        color = "Cluster")
 ```
 
