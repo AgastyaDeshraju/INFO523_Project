@@ -198,7 +198,17 @@ plot(
 ```
 
 ```{r}
-plot(satisfied_rules, method = "scatterplot", measure = c("support", "confidence"), shading = "lift")
+plot(
+  satisfied_rules,
+  method = "scatterplot",
+  measure = c("support", "confidence"),
+  shading = "lift",
+  control = list(
+    col = colorRampPalette(c( "#4f86c1", "#d6eaf8"))(1.8)
+  )
+)
+
+# Sort the rules by lift
 top_rules <- sort(ars_adjusted, by = "lift")
 ```
 
@@ -222,18 +232,44 @@ inspect(sort(unsatisfaction_rules, by = "lift")[1:10])
 
 ```{r}
 # Scatterplot for satisfaction rules
-plot(unsatisfaction_rules, method = "scatterplot", measure = c("support", "confidence"), shading = "lift")
+plot(
+  unsatisfaction_rules, 
+  method = "scatterplot", 
+  measure = c("support", "confidence"), 
+  shading = "lift",
+  control = list(
+    col = colorRampPalette(c( "#4f86c1", "#d6eaf8"))(1.8)
+  )
+)
 ```
+
 ```{r}
 high_lift_unsatisfaction_rules <- subset(unsatisfaction_rules, lift > 1.5)
-plot(high_lift_unsatisfaction_rules, method = "scatterplot", measure = c("support", "confidence"), shading = "lift")
+plot(
+  high_lift_unsatisfaction_rules, 
+  method = "scatterplot", 
+  measure = c("support", "confidence"), 
+  shading = "lift",
+  control = list(
+    col = colorRampPalette(c( "#4f86c1", "#d6eaf8"))(1.5)
+  )
+)
 
 ```
 
 
 ```{r}
 top_unsatisfaction_rules <- sort(unsatisfaction_rules, by = "lift")[1:10]
-plot(top_unsatisfaction_rules, method = "graph", engine = "htmlwidget")
+plot(
+  top_unsatisfaction_rules, 
+  method = "graph", 
+  engine = "htmlwidget",
+  control = list(
+    nodeCol = "#4ebded",  # Node color (blue-green)
+    edgeCol = "#4f86c1",  # Edge color (light blue)
+    alpha = 0.8           # Transparency for edges
+  )
+)
 
 ```
 
