@@ -470,3 +470,218 @@ data.frame(
 - **Decision Tree** provides easy interpretability.
 - **Random Forest** excels in feature importance and overall accuracy.
 - Consider model choice based on application requirements and computational resources.
+
+## Clustering Analysis
+
+```{r load_clustering_data}
+
+clusterDf <- read.csv("clusterDf.csv")
+clusterDf <- clusterDf |>
+  select(-X) |>
+  mutate(Class = factor(Class),
+         satisfaction = factor(satisfaction))
+
+```
+
+-   Aims to identify patterns regarding the satisfaction of passengers based on their age, their flight experience relative to their flying class, along with their flight distance
+-   Variables: Age, Class, Flight.Distance, Satisfaction
+-   Algorithms: PAM and OPTICS
+
+## PAM Clustering
+
+-   Used the gower distance metric to accommodate the mixed variable types
+-   Performed a log transformation on Flight.Distance variable to eliminate skewness
+
+## Determining Number of Clusters
+
+```{r calculate_distance_matrix, include=FALSE}
+
+# Compute the distance matrix
+gower_dist <- daisy(clusterDf,
+                    metric = "gower",
+                    type = list(logratio = 3))
+gower_mat <- as.matrix(gower_dist)
+summary(gower_dist)
+```
+
+```{r plot_silhouette_width, fig.width=6, fig.asp=0.618}
+#| fig.align: "center"
+
+
+
+# Calculate Silhouette width for 2 to 10 clusters with PAM
+sil <- c(NA)
+for(i in 2:10){
+  pam_fit <- pam(gower_mat, diss = TRUE, k = i)
+  sil[i] <- pam_fit$silinfo$avg.width
+}
+
+# Plot Silhouette width
+silWidthData <- data.frame(2:10, sil[-1])
+colnames(silWidthData) <- c("numClusters", "silWidth")
+
+silWidthData |>
+  ggplot(aes(x = numClusters, y = silWidth)) +
+  geom_point(color = "blue", size = 3) +
+  geom_line(color = "blue", lwd = 1) +
+  scale_x_continuous(breaks = seq(1,10, by = 1)) +
+  labs(x = "Number of Clusters",
+       y = "Silhouette Width",
+       title = "Pam Silhouette Scores for Different Cluster Amounts") +
+  theme(panel.grid.minor = element_blank(),
+        axis.title.x = element_text(margin = margin(t = 15)),
+        axis.title.y = element_text(margin = margin(r = 15)),
+        axis.text = element_text(size = 12))
+
+```
+
+## Examining the PAM Mediods
+
+```{r pam-mediods}
+# Perform clustering using PAM with 5 clusters
+pam_fit <- pam(gower_dist, diss = TRUE, k = 5)
+clusterDf$pam_cluster <- pam_fit$cluster
+
+mediodsTable <- clusterDf[,-5]
+colnames(mediodsTable) <- c("Age", 
+                            "Class", 
+                            "Flight Distance",
+                            "Satisfaction")
+
+knitr::kable(mediodsTable[pam_fit$medoids,], row.names = FALSE)
+```
+
+## Visualizing Clusters
+
+```{r t-SNE_plot, fig.width=6, fig.asp=0.618}
+tsne_obj <- Rtsne(gower_dist, is_distance = TRUE)
+tsne_data <- tsne_obj$Y |>
+  data.frame() |>
+  setNames(c("X", "Y")) |>
+  mutate(cluster = factor(pam_fit$clustering))
+
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster)) +
+  labs(x = "X",
+       y = "Y",
+       title = "t-SNE Plot of OPTICS Custering",
+       color = "Cluster")
+```
+
+## OPTICS Clustering
+
+::: panel-tabset
+#### OPTICS
+
+```{r optics-clustering, include=FALSE}
+(res_op <- optics(gower_dist, eps = 10, minPts = 15))
+```
+
+```{r optics-reachability-plot}
+plot(res_op)
+```
+
+#### DBSCAN
+
+```{r extract-dbscan, include=FALSE}
+(res_op_d <- extractDBSCAN(res_op, eps_cl = 0.05))
+```
+
+```{r dbscan-reachability-plot}
+plot(res_op_d)
+```
+:::
+
+## Analyzing OPTICS Cluster Values
+
+```{r optics-cluster-eval, include=FALSE}
+# Examine the average value for each variable from the OPTICS clustering
+
+clusterDf$optics_cluster <- res_op_d$cluster
+
+# Find the average value for each numeric variable based on cluster
+clusterAvg <- clusterDf |>
+  group_by(optics_cluster) |>
+  summarize(across(where(is.numeric), mean, na.rm = TRUE), .groups = 'drop')
+
+# Create a tibble containing the Class value for each cluster
+# Each cluster except for the noisy points (cluster 0) only
+# has one value for the class variable so the slice_max()
+# function is used to select the most represented Class
+# for the noisy points since we are not analyzing the Class 
+# of the noise anyways
+classVal <- clusterDf |>
+  group_by(optics_cluster, Class) |>
+  summarise(count = n()) |>
+  slice_max(order_by = count, n = 1, with_ties = FALSE)
+
+# Create a tibble containing the satisfaction value for each cluster
+satisVal <- clusterDf |>
+  group_by(optics_cluster, satisfaction) |>
+  summarise(count = n()) |>
+  slice_max(order_by = count, n = 1, with_ties = FALSE)
+
+# Join the Class values and satisfaction values with the rest of the average points for each cluster
+clusterAvg <- clusterAvg |>
+  left_join(classVal |> select(optics_cluster, Class = Class), by = "optics_cluster") |>
+  left_join(satisVal |> select(optics_cluster, satisfaction = satisfaction), by = "optics_cluster") |>
+  select(optics_cluster, 
+         Age, 
+         Class, 
+         Flight.Distance, 
+         satisfaction, 
+         pam_cluster)
+
+clusterAvg <- clusterAvg[-1,]
+
+clustCompare <- clusterDf
+clustCompare$optics_cluster[clustCompare$optics_cluster == 3] <- 7
+clustCompare$optics_cluster[clustCompare$optics_cluster == 4] <- 3
+clustCompare$optics_cluster[clustCompare$optics_cluster == 7] <- 4
+
+colnames(clusterAvg) <- c("Optics Cluster",
+                          "Age",
+                          "Class",
+                          "Flight Distance",
+                          "Satisfaction",
+                          "PAM Cluster")
+
+clusterAvg <- clusterAvg[c("Age",
+                           "Class",
+                           "Flight Distance",
+                           "Satisfaction",
+                           "PAM Cluster",
+                           "Optics Cluster")]
+```
+
+::: panel-tabset
+#### OPTICS
+
+```{r optics-cluster-values}
+knitr::kable(clusterAvg[,1:4], row.names = FALSE)
+```
+
+#### Clusters
+
+```{r}
+knitr::kable(clusterAvg[,5:6], row.names = FALSE)
+```
+
+#### Assignments
+
+```{r}
+clustCompareTable <- table(clustCompare$pam_cluster, clustCompare$optics_cluster)
+
+knitr::kable(clustCompareTable, row.names = TRUE)
+```
+:::
+
+
+## Insights
+
+-   Appear to be interesting patterns that show satisfaction only came from:
+    -   Older passengers sitting Business class on long flights
+    -   Older passengers sitting Eco class on shorter flights
+-   Very few passengers flying Eco Plus class were satisfied
+    -   Could indicate their higher expectations were not met
+-   Improve service to passengers paying for higher classes to increase satisfaction
