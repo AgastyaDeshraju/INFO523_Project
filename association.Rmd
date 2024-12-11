@@ -190,11 +190,11 @@ plot(
   )
 )
 
-# # Optionally save the plot as an HTML file (interactive)
-# htmlwidgets::saveWidget(
-#   plot(top_rules_lift, method = "graph", engine = "htmlwidget"),
-#   "network_plot_satisfied.html"
-# )
+# Optionally save the plot as an HTML file (interactive)
+htmlwidgets::saveWidget(
+  plot(top_rules_lift, method = "graph", engine = "htmlwidget"),
+  "network_plot_satisfied.html"
+)
 ```
 
 ```{r}
@@ -271,6 +271,11 @@ plot(
   )
 )
 
+
+htmlwidgets::saveWidget(
+  plot(top_unsatisfaction_rules, method = "graph", engine = "htmlwidget"),
+  "network_plot_unsatisfied_fp.html"
+)
 ```
 
 

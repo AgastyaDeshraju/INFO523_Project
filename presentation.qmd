@@ -59,7 +59,10 @@ pacman::p_load(tidyverse,
                rpart,
                randomForest,
                keras,
-               dplyr
+               dplyr,
+               e1071,
+               rpart,
+               randomForest
 ) 
 ```
 
@@ -71,6 +74,16 @@ data$satisfaction_numerical <- ifelse(data$satisfaction == "satisfied", 1, 0)
 numeric_data <- data[, -c(1,2,3,4,6,7,25)]
 
 ```
+
+## Association
+* In data mining, association rules identify patterns in a dataset by linking a set of items(anticedents) to another set of items(consequent)
+* Antecedent (if) -> Consequent (then)
+
+## Support and Confidence
+
+* Support measures the frequency of an item in the dataset
+* Confidence measures the reliability of the rule
+* Lift measures the strength of an association 
 
 ## Heatmap Correlation
 
@@ -98,7 +111,7 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
 -   There's a strong correlation between *Seat Comfort, Inflight Entertainment, Online Boarding* with *Satisfaction*
 -   While operating metrics like *Delays* negatively affect customer satisfaction, their impact is relatively weaker compared to customer-facing metrics
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prepare the dataset
 data_temp <- data
 
@@ -133,14 +146,14 @@ data_subset <- data_temp[, columnsSQE]
 transactions <- as(data_subset, "transactions")
 ```
 
-```{r}
-# Plot item frequencies
-itemFrequencyPlot(transactions, support = 0.3, cex.names = 0.8, col = "#4f86c1")
-```
+
 
 ## Apriori
 
-```{r}
+* Uses a generate-and-test approach.
+* Follows the apriori property
+
+```{r echo=FALSE, include=FALSE, warning=FALSE}
 # Run the Apriori algorithm
 ars_adjusted <- apriori(transactions, parameter = list(support = 0.02, confidence = 0.6))
 
@@ -151,24 +164,11 @@ satisfied_rules <- subset(ars_adjusted, rhs %in% "satisfaction=Satisfied")
 top_rules_lift <- sort(satisfied_rules, by = "lift")[1:10]
 ```
 
-```{r}
-plot(
-  top_rules_lift,
-  method = "graph",
-  engine = "htmlwidget",
-  control = list(
-    nodeCol = "#4ebded",  # Node color (blue-green)
-    edgeCol = "#4f86c1",  # Edge color (light blue)
-    alpha = 0.8           # Transparency for edges
-  )
-)
 
-```
 
--   Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
--   Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before.
 
-```{r}
+## Scatter plot of Supportt vs Confidence for Satisfaction
+```{r  warning=FALSE}
 plot(
   satisfied_rules,
   method = "scatterplot",
@@ -179,10 +179,42 @@ plot(
   )
 )
 ```
+## Interpretation of Support Vs Confidence for Satisfaction
+* The graph shows a concentration of the higher lift points around the high confidence - low support region
+* When selecting the rules, efforts should be made to balance high support rules, with high confidence and high lift rules
+
+
+## Satisfaction based Rule Network Graph
+
+<iframe src="network_plot_satisfied.html" width="100%" height="550-0px" frameborder="0"></iframe>
+
+
+```{r warning=FALSE}
+# plot(
+#   top_rules_lift,
+#   method = "graph",
+#   engine = "htmlwidget",
+#   control = list(
+#     nodeCol = "#4ebded",  # Node color (blue-green)
+#     edgeCol = "#4f86c1",  # Edge color (light blue)
+#     alpha = 0.8           # Transparency for edges
+#   )
+# )
+
+```
+## Interpretation of the network graph
+
+-   Positive features like *Seat comfort, Inflight entertainment, Online boarding, Leg room service* and *On-board service* are connected to multiple rules indicating that they play significant roles in driving satisfaction.
+-   Features such as *Baggage handling* and *Cleanliness* play important roles as well but not as much as the ones mentioned before.
+
+
 
 ## FP Growth
 
-```{r}
+* Uses a divide-and-conquer approach
+* Constructs a compact data structure to represent the data
+
+```{r echo=FALSE, include=FALSE, warning=FALSE}
 fp_itemsets <- apriori(transactions, parameter = list(support = 0.02, target = "frequent itemsets"))
 
 # Generate rules from the frequent itemsets
@@ -193,7 +225,9 @@ unsatisfaction_rules <- subset(fp_rules, rhs %in% "satisfaction=Unsatisfied")
 
 ```
 
-```{r}
+
+## Scatter plot of Support Vs Confidence for Unsatisfaction
+```{r warning=FALSE}
 # Scatterplot for satisfaction rules
 plot(
   unsatisfaction_rules, 
@@ -205,21 +239,37 @@ plot(
   )
 )
 ```
+## Interpretation of Support Vs Confidence for Unsatisfaction
+* Similar to the satisfaction plot, there is a high concentration of low support and high confidence points.
+* Focus should therefore be drawn to rules with moderate lift and higher support .
 
-```{r}
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 top_unsatisfaction_rules <- sort(unsatisfaction_rules, by = "lift")[1:10]
-plot(
-  top_unsatisfaction_rules, 
-  method = "graph", 
-  engine = "htmlwidget",
-  control = list(
-    nodeCol = "#4ebded",  # Node color (blue-green)
-    edgeCol = "#4f86c1",  # Edge color (light blue)
-    alpha = 0.8           # Transparency for edges
-  )
-)
 ```
 
+## Unsatisfaction based Rule Network Graph
+
+<iframe src="network_plot_unsatisfied_fp.html" width="100%" height="550-0px" frameborder="0"></iframe>
+
+
+```{r}
+# plot(
+#   top_unsatisfaction_rules, 
+#   method = "graph", 
+#   engine = "htmlwidget",
+#   control = list(
+#     nodeCol = "#4ebded",  # Node color (blue-green)
+#     edgeCol = "#4f86c1",  # Edge color (light blue)
+#     alpha = 0.8           # Transparency for edges
+#   )
+# )
+```
+
+## Interpretation of the Network Graph
+
+* Features such as Poor Leg Service and Poor Wi-Fi Service contribute to unsatisfaction
+* Thicker and darker edges represent stronger rules
 
 
 ## Classification Introduction
