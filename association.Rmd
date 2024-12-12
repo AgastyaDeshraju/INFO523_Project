@@ -1,5 +1,5 @@
 ---
-title: "Code"
+title: "AssociationAnalysis"
 author: "Agastya Deshraju, Nick Ferrante, Jasdeep Singh Jhajj"
 date: "2024-12-09"
 output: html_document
@@ -20,70 +20,47 @@ pacman::p_load(tidyverse,
 
 ```
 
+
+## Load and Inspect data
 ```{r}
 data <- read.csv('train.csv')
 
-data
+# Display data and check for missing values
+print(head(data))
+print(colSums(is.na(data)))
 ```
 
+## Data Cleaning
 ```{r}
-colSums(is.na(data))
-```
-
-
-```{r}
-data |> head()
-```
-
-
-```{r}
+# Replace missing values with 0
 data[is.na(data)] <- 0
 
-colSums(is.na(data))
-```
+# Recheck for missing values
+print(colSums(is.na(data)))
 
-```{r}
+# Recode satisfaction column
 data$satisfaction <- ifelse(data$satisfaction == "satisfied", "satisfied", "unsatisfied")
-```
 
-```{r}
-data
-```
-
-
-```{r}
+# Add a numerical satisfaction column
 data$satisfaction_numerical <- ifelse(data$satisfaction == "satisfied", 1, 0)
-```
 
-```{r}
-data
-```
-
-
-```{r}
-str(data)
-```
-
-
-```{r}
-numeric_data <- data[, -c(1,2,3,4,6,7,25)]
-
-numeric_data
 ```
 
 
 
+
+## Data Transformation
 ```{r}
+# Subset numeric columns for correlation analysis
+numeric_data <- data[, -c(1, 2, 3, 4, 6, 7, 25)]
+
+# Calculate correlation matrix and reshape
 cor_matrix <- cor(numeric_data, use = "complete.obs")
-
 cor_melted <- melt(cor_matrix)
 ```
 
 
-```{r}
-cor_matrix
-```
-
+## Correlation Heatmap
 ```{r}
 ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   geom_tile(color = "white") +
@@ -97,49 +74,36 @@ ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
-```{r}
-# Prepare the dataset
-data_temp <- data
 
-# Define the columns to be recoded
+## Recode Survey Quality Experience (SQE) Columns
+```{r}
 columnsSQE <- c("Online.boarding", "Seat.comfort", "Inflight.entertainment", 
                 "Leg.room.service", "On.board.service", "Cleanliness", 
                 "Inflight.wifi.service", "Baggage.handling")
 
-# Recode numeric columns into factors: "Poor", "Neutral", "Good"
 recode_to_factors <- function(column) {
   factor(ifelse(column %in% c(1, 2), "Poor",
          ifelse(column == 3, "Neutral", "Good")),
          levels = c("Poor", "Neutral", "Good"))
 }
 
-for(col in columnsSQE){
-  data_temp[[col]] <- recode_to_factors(data_temp[[col]])
+for(col in columnsSQE) {
+  data[[col]] <- recode_to_factors(data[[col]])
 }
 
-# Add a new column for satisfaction as a factor
-data_temp$satisfaction <- factor(ifelse(data_temp$satisfaction_numerical == 1, 
-                                        "Satisfied", "Unsatisfied"),
-                                  levels = c("Unsatisfied", "Satisfied"))
+data$satisfaction <- factor(ifelse(data$satisfaction_numerical == 1, 
+                                   "Satisfied", "Unsatisfied"),
+                            levels = c("Unsatisfied", "Satisfied"))
 ```
 
+
+
+## Association Rule Mining Preparation
 
 ```{r}
 # Verify the new satisfaction column
-table(data_temp$satisfaction)
-```
+data_subset <- data[, c(columnsSQE, "satisfaction")]
 
-
-```{r}
-# Include the satisfaction column in the subset for transactions
-columnsSQE <- c(columnsSQE, "satisfaction")
-
-# Subset only the selected columns for association rule mining
-data_subset <- data_temp[, columnsSQE]
-```
-
-
-```{r}
 # Convert to transactions format
 transactions <- as(data_subset, "transactions")
 
@@ -148,12 +112,14 @@ summary(transactions)
 ```
 
 
+
 ```{r}
 # Plot item frequencies
 itemFrequencyPlot(transactions, support = 0.3, cex.names = 0.8, col = "#4f86c1")
 ```
 
 
+## Apriori Algorithm Rule Mining
 ```{r}
 # Run the Apriori algorithm
 ars_adjusted <- apriori(transactions, parameter = list(support = 0.02, confidence = 0.6))
@@ -163,12 +129,7 @@ inspect(sort(ars_adjusted, by = "lift")[1:10])
 ```
 
 
-```{r}
-# Display item labels
-itemLabels(ars_adjusted)
-```
-
-### Apriori Satisfied Rules
+### Apriori Rules (Satisfied)
 ```{r}
 # Subset rules where satisfaction = Satisfied is in the rhs
 satisfied_rules <- subset(ars_adjusted, rhs %in% "satisfaction=Satisfied")
@@ -178,6 +139,8 @@ top_rules_lift <- sort(satisfied_rules, by = "lift")[1:10]
 inspect(top_rules_lift)
 
 ```
+
+## Visualization of Rules
 ```{r}
 plot(
   top_rules_lift,
@@ -189,7 +152,10 @@ plot(
     alpha = 0.8           # Transparency for edges
   )
 )
+```
 
+
+```{r}
 # Optionally save the plot as an HTML file (interactive)
 htmlwidgets::saveWidget(
   plot(top_rules_lift, method = "graph", engine = "htmlwidget"),
@@ -215,7 +181,7 @@ top_rules <- sort(ars_adjusted, by = "lift")
 
 
 
-## FP Growth Unsatisfied
+## FP Growth (Unsatisfied)
 
 ```{r}
 fp_itemsets <- apriori(transactions, parameter = list(support = 0.02, target = "frequent itemsets"))
@@ -270,8 +236,10 @@ plot(
     alpha = 0.8           # Transparency for edges
   )
 )
+```
 
 
+```{r}
 htmlwidgets::saveWidget(
   plot(top_unsatisfaction_rules, method = "graph", engine = "htmlwidget"),
   "network_plot_unsatisfied_fp.html"
@@ -279,8 +247,4 @@ htmlwidgets::saveWidget(
 ```
 
 
-
-```{r}
-str(data)
-```
 
