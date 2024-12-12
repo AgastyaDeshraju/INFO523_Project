@@ -24,7 +24,7 @@ execute:
 #| include: false
 
 # Plot theme
-ggplot2::theme_set(ggplot2::theme_minimal(base_size = 11))
+ggplot2::theme_set(ggplot2::theme_minimal(base_size = 9))
 
 # For better figure resolution
 knitr::opts_chunk$set(
@@ -138,8 +138,8 @@ silWidthData |>
        y = "Silhouette Width",
        title = "Pam Silhouette Scores for Different Cluster Amounts") +
   theme(panel.grid.minor = element_blank(),
-        axis.title.x = element_text(margin = margin(t = 15)),
-        axis.title.y = element_text(margin = margin(r = 15)),
+        axis.title.x = element_text(),
+        axis.title.y = element_text(),
         axis.text = element_text(size = 12))
 
 ```
@@ -186,7 +186,7 @@ ggplot(aes(x = X, y = Y), data = tsne_data) +
 (res_op <- optics(gower_dist, eps = 10, minPts = 15))
 ```
 
-```{r optics-reachability-plot}
+```{r optics-reachability-plot, fig.width=9, fig.asp=0.618}
 plot(res_op)
 ```
 
@@ -196,7 +196,7 @@ plot(res_op)
 (res_op_d <- extractDBSCAN(res_op, eps_cl = 0.05))
 ```
 
-```{r dbscan-reachability-plot}
+```{r dbscan-reachability-plot, fig.width=9, fig.asp=0.618}
 plot(res_op_d)
 ```
 :::
@@ -296,14 +296,14 @@ knitr::kable(clustCompareTable, row.names = TRUE)
 -   Improve service to passengers paying for higher classes to increase satisfaction
 
 ## Association
-* In data mining, association rules identify patterns in a dataset by linking a set of items(anticedents) to another set of items(consequent)
+* In data mining, association rules identify patterns in a dataset by linking a set of items to another set of items
 * Antecedent (if) -> Consequent (then)
 
 ## Support and Confidence
 
-* Support measures the frequency of an item in the dataset
-* Confidence measures the reliability of the rule
-* Lift measures the strength of an association 
+* **Support** measures the frequency of an item in the dataset
+* **Confidence** measures the reliability of the rule
+* **Lift** measures the strength of an association 
 
 ## Heatmap Correlation
 
@@ -403,21 +403,6 @@ plot(
 <iframe src="network_plot_satisfied.html" width="100%" height="550-0px" frameborder="0"></iframe>
 
 
-```{r warning=FALSE}
-# plot(
-#   top_rules_lift,
-#   method = "graph",
-#   engine = "htmlwidget",
-#   control = list(
-#     nodeCol = "#4ebded",  # Node color (blue-green)
-#     edgeCol = "#4f86c1",  # Edge color (light blue)
-#     alpha = 0.8           # Transparency for edges
-#   )
-# )
-
-```
-
-
 
 ## FP Growth Algorithm
 
@@ -459,8 +444,6 @@ top_unsatisfaction_rules <- sort(unsatisfaction_rules, by = "lift")[1:10]
 ## Unsatisfaction based Rule Network Graph
 
 <iframe src="network_plot_unsatisfied_fp.html" width="100%" height="550-0px" frameborder="0"></iframe>
-
-
 
 
 ## Classification Introduction
@@ -518,23 +501,27 @@ test_y <- if ("satisfaction" %in% colnames(test_dataset)) test_dataset$satisfact
 ## Support Vector Machine (SVM)
 
 - SVM uses a linear kernel to classify satisfaction based on selected features.
-- Features selected: `Inflight.wifi.service`, `Flight.Distance`, `Online.boarding` and `Seat.comfort`.
+- Features selected: 
+  - `Inflight.wifi.service`
+  - `Flight.Distance`
+  - `Online.boarding`
+  - `Seat.comfort`
 
+## SVM Results
 ```{r}
 # Select relevant features
-selected_features <- c("Inflight.wifi.service", "Flight.Distance",
-                       "Online.boarding", "Seat.comfort", "satisfaction")
+selected_features <- c("Inflight.wifi.service", "Flight.Distance", "Online.boarding", "Seat.comfort", "satisfaction")
 
 # Create subsets for training and testing
-# train_dataset_reduced <- train_dataset[, selected_features]
-# test_dataset_reduced <- test_dataset[, selected_features]
-# 
-# # Train SVM model
-# svm_model <- svm(satisfaction ~ ., data = train_dataset_reduced, kernel = "linear")
-# 
-# # Predict and evaluate
-# svm_predictions <- predict(svm_model, test_dataset_reduced)
-# confusionMatrix(svm_predictions, test_y)
+train_dataset_reduced <- train_dataset[, selected_features]
+test_dataset_reduced <- test_dataset[, selected_features]
+
+# Train SVM model
+svm_model <- svm(satisfaction ~ ., data = train_dataset_reduced, kernel = "linear")
+
+# Predict and evaluate
+svm_predictions <- predict(svm_model, test_dataset_reduced)
+confusionMatrix(svm_predictions, test_y)
 ```
 
 
@@ -545,16 +532,16 @@ library(ggplot2)
 library(caret)
 library(reshape2)
 
-# # Generate confusion matrix for SVM
-# conf_matrix_svm <- confusionMatrix(svm_predictions, test_y)$table
-# conf_matrix_svm_melted <- melt(conf_matrix_svm)
-# 
-# # Heatmap
-# ggplot(conf_matrix_svm_melted, aes(x = Prediction, y = Reference, fill = value)) +
-#   geom_tile(color = "white") +
-#   scale_fill_gradient(low = "lightblue", high = "darkblue") +
-#   labs(title = "Confusion Matrix (SVM)", x = "Predicted", y = "Actual", fill = "Frequency") +
-#   theme_minimal()
+# Generate confusion matrix for SVM
+conf_matrix_svm <- confusionMatrix(svm_predictions, test_y)$table
+conf_matrix_svm_melted <- melt(conf_matrix_svm)
+
+# Heatmap
+ggplot(conf_matrix_svm_melted, aes(x = Prediction, y = Reference, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Confusion Matrix (SVM)", x = "Predicted", y = "Actual", fill = "Frequency") +
+  theme_minimal()
 ```
 
 
@@ -641,9 +628,9 @@ ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
 ```{r}
 # Accuracy comparison
 data.frame(
-  Model = c("Decision Tree", "Random Forest"),
+  Model = c("SVM","Decision Tree", "Random Forest"),
   Accuracy = c(
-    #mean(svm_predictions == test_y),
+    mean(svm_predictions == test_y),
     mean(tree_predictions == test_y),
     mean(rf_predictions == test_y)
   )
